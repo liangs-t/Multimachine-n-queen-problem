@@ -67,7 +67,7 @@ void *connectclnt(void *arg)
     int serv_sock = listenfd(), clnt_sock;
     sem_wait(&sem);
     st.insert(serv_sock);
-    sem.post(&sem);
+    sem_post(&sem);
     pthread_t pid;
     while (1)
     {
@@ -76,7 +76,7 @@ void *connectclnt(void *arg)
         clnt_sock = accept(serv_sock, (SA *)&clnt_addr, &l);
         sem_wait(&sem);
         st.insert(clnt_sock);
-        sem.post(&sem);
+        sem_post(&sem);
         printf("%s connected...\n", inet_ntoa(clnt_addr.sin_addr));
         int *cfd = (int *)alloca(sizeof(int));
         *cfd = clnt_sock;
@@ -124,8 +124,8 @@ void *allocwork(void *arg)
     wg.add();
     close(fd);
     sem_wait(&sem);
-    st.erase(serv_sock);
-    sem.post(&sem);
+    st.erase(fd);
+    sem_post(&sem);
     return NULL;
 }
 
