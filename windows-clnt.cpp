@@ -1,51 +1,53 @@
-#include <bits/stdc++.h>
 #include "qbuf.h"
-#include <pthread.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <sys/epoll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <winsock2.h>
+#include <process.h>
+#include <time.h>
+#include <windows.h>
 using namespace std;
 typedef long long ll;
+const int maxn = 256;
 const int Size = 100;
 ll n;
 
 void dfs(ll row, ll col, ll a, ll b, ll &cnt);
-void *thread1(void *vargp);
+unsigned WINAPI thread1(void *arg);
 workgroub wg;
 qbuf_t qbuf = qbuf_t(Size);
 char buf[128];
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
     if (argc != 3)
     {
-        printf("Usage : %s <IP> <port>\n", argv[0]);
+        printf("Usage:%s <IP> <port>\n", argv[0]);
         exit(1);
     }
-
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof serv_addr);
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-    serv_addr.sin_port = htons(atoi(argv[2]));
-    int server_sock;
-    server_sock = socket(PF_INET, SOCK_STREAM, 0);
-    int err = connect(server_sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-    if (err < 0)
+    WSADATA wsadata;
+    SOCKET ServSock, ClntSock;
+    SOCKADDR_IN ServAddr, ClntAddr;
+    int sz;
+    if (WSAStartup(MAKEWORD(2, 2), &wsadata) != 0)
+        printf("startup error\n");
+    ServSock = socket(PF_INET, SOCK_STREAM, 0);
+    if (ServSock == INVALID_SOCKET)
+        printf("socket error\n");
+    memset(&ServAddr, 0, sizeof(ServAddr));
+    ServAddr.sin_family = AF_INET;
+    ServAddr.sin_addr.s_addr = inet_addr(argv[1]);
+    ServAddr.sin_port = htons(atoi(argv[2]));
+    if (connect(ServSock, (SOCKADDR *)&ServAddr, sizeof(ServAddr)) == SOCKET_ERROR)
     {
-        fputs("can not connect", stdout);
-        exit(2);
+        printf("connect error\n");
+        return 0;
     }
     puts("connected");
-
-    unsigned int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-    pthread_t tid;
-    for (int i = 0; i < ncpu; i++)
-        pthread_create(&tid, NULL, thread1, NULL);
-
-    while (int len = read(server_sock, buf, 128))
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    for (int i = 0; i < sysinfo.dwNumberOfProcessors; i++)
+        _beginthreadex(NULL, 0, thread1, NULL, 0, NULL);
+    while (int len = recv(ServSock, buf, 128, 0))
     {
         time_t start = time(NULL);
         queen q;
@@ -60,19 +62,18 @@ int main(int argc, const char **argv)
         }
         wg.wait();
         sprintf(buf, "%lld", wg.ans);
-        write(server_sock, buf, sizeof(buf));
+        send(ServSock, buf, sizeof(buf), 0);
         time_t end = time(NULL);
         int ti = end - start;
         printf("%lld queens problem is being calculated,current sub-problem time is %d s\n", n, ti);
         wg.ans = 0;
     }
-    close(server_sock);
+    closesocket(ServSock);
     return 0;
 }
 
-void *thread1(void *vargp)
+unsigned WINAPI thread1(void *arg)
 {
-    pthread_detach(pthread_self());
     while (1)
     {
         queen q = qbuf.remove();
@@ -80,6 +81,7 @@ void *thread1(void *vargp)
         dfs(q.row, q.col, q.a, q.b, cnt);
         wg.del(cnt);
     }
+    return 0;
 }
 
 void dfs(ll row, ll col, ll a, ll b, ll &cnt)

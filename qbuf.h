@@ -52,7 +52,6 @@ struct workgroub
 {
     sem_t empty;
     sem_t mutex;
-    clock_t start, end;
     int size = 0;
     ll ans = 0;
     workgroub()
@@ -67,7 +66,6 @@ struct workgroub
         if (size == 0)
         {
             sem_wait(&empty);
-            start = clock();
         }
         size++;
         sem_post(&mutex);
@@ -87,6 +85,5 @@ struct workgroub
     {
         sem_wait(&empty);
         sem_post(&empty);
-        end = clock();
     }
 };

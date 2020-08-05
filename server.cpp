@@ -11,6 +11,8 @@
 #include <sys/epoll.h>
 #include <pthread.h>
 #include "qbuf.h"
+#include <set>
+using namespace std;
 typedef struct sockaddr SA;
 typedef long long ll;
 const int Size = 1024;
@@ -25,7 +27,8 @@ void prepare(ll row, ll col, ll a, ll b);
 ll n = 16, sum, port;
 workgroub wg;
 qbuf_t qbuf = qbuf_t(Size);
-
+sem_t sem;
+set<int> st;
 int main(int argc, const char **argv)
 {
     if (argc != 2)
@@ -33,6 +36,7 @@ int main(int argc, const char **argv)
         printf("Usage:%s <port>\n", argv[0]);
         exit(1);
     }
+    sem_init(&sem, 0, 1);
     port = atoi(argv[1]);
     pthread_t pid;
     pthread_create(&pid, NULL, connectclnt, NULL);
@@ -53,18 +57,26 @@ int main(int argc, const char **argv)
         printf("%lld queens problem result: %lld\ntakes %d s\n", n, wg.ans, ti);
         wg.ans = 0;
     }
+    for (auto fd : st)
+        close(fd);
     return 0;
 }
 
 void *connectclnt(void *arg)
 {
     int serv_sock = listenfd(), clnt_sock;
+    sem_wait(&sem);
+    st.insert(serv_sock);
+    sem.post(&sem);
     pthread_t pid;
     while (1)
     {
         struct sockaddr_in clnt_addr;
         socklen_t l = sizeof(clnt_addr);
         clnt_sock = accept(serv_sock, (SA *)&clnt_addr, &l);
+        sem_wait(&sem);
+        st.insert(clnt_sock);
+        sem.post(&sem);
         printf("%s connected...\n", inet_ntoa(clnt_addr.sin_addr));
         int *cfd = (int *)alloca(sizeof(int));
         *cfd = clnt_sock;
@@ -111,6 +123,9 @@ void *allocwork(void *arg)
     qbuf.insert(q);
     wg.add();
     close(fd);
+    sem_wait(&sem);
+    st.erase(serv_sock);
+    sem.post(&sem);
     return NULL;
 }
 
