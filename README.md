@@ -4,9 +4,11 @@
 位运算速解n皇后：https://zhuanlan.zhihu.com/p/22846106
 
 
-服务端编译指令 g++  std=c++11 server.cpp -o server -lpthread 
+服务端编译指令 g++ -std=c++11 server.cpp -o server -lpthread 
 
 linux客户端编译指令 g++  -std=c++11 linux-clnt.cpp -o clnt -lpthread
+
+windows客户端编译指令 g++ windows-clnt.cpp -o clnt.exe -lwsock32
 
 ```cpp
 [root@i queen]# ./server 8080
