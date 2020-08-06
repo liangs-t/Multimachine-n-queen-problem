@@ -68,9 +68,10 @@ void *connectclnt(void *arg)
     sem_wait(&sem);
     st.insert(serv_sock);
     sem_post(&sem);
-    pthread_t pid;
     while (1)
     {
+        pthread_t pid;
+
         struct sockaddr_in clnt_addr;
         socklen_t l = sizeof(clnt_addr);
         clnt_sock = accept(serv_sock, (SA *)&clnt_addr, &l);
@@ -111,7 +112,7 @@ void *allocwork(void *arg)
     queen q = qbuf.remove();
     sprintf(buf, "%lld %lld %lld %lld %lld\n", n, q.row, q.col, q.a, q.b);
     write(fd, buf, sizeof(buf));
-    while (len = read(fd, buf, maxn))
+    while ((len = read(fd, buf, maxn))>0)
     {
         ll ans = atol(buf);
         wg.del(ans);
@@ -121,7 +122,6 @@ void *allocwork(void *arg)
         write(fd, buf, sizeof(buf));
     }
     qbuf.insert(q);
-    wg.add();
     close(fd);
     sem_wait(&sem);
     st.erase(fd);
